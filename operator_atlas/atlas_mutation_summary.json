@@ -1,0 +1,20 @@
+{
+  "mutation": {
+    "src": 8,
+    "dst": 5,
+    "amount": 0.12,
+    "mean_operator_response_change": 0.8436793684959412,
+    "material_sum_before": 3.9431981292797453,
+    "material_sum_after": 3.9431981292797453
+  },
+  "atlas": {
+    "grid": 10,
+    "address_span": 5.0,
+    "z": 0.0,
+    "motion_gain": 9.0,
+    "mean_coeff_delta": 0.8436793684959412,
+    "max_coeff_delta": 4.742980003356934,
+    "mean_pixel_absdiff": 11.638561197916669,
+    "max_tile_pixel_absdiff": 56.9716796875
+  }
+}
