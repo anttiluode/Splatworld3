@@ -1,216 +1,246 @@
-# SplatWorld2
+# SplatWorld3 — one plate, many views
 
-![pic](splatworld2.png)
+![SplatWorld2 control](splatworld2.png)
 
-A no-retraining experiment built from the original **SplatWorld** CelebA decoder.
+`Splatworld3` is the branch where the **ObjektiYksi operator-family idea is inserted into the visual SplatWorld face manifold**.
 
-The model itself is unchanged: `splat_decoder.onnx` maps a 128-D latent point to a 96x96 Gabor-rendered face. SplatWorld2 changes how we explore that learned face space and how we display local motion without allowing repeated reconstruction to dissolve the image.
-
-The useful picture is now:
+The old `splatworld2.py` is intentionally still here as the control. It does:
 
 ```text
-GLOBAL learned face manifold
-        |
-        | surf identity
-        v
-   choose face z0
-        |
-        | measure this face locally
-        v
-LOCAL transport-like modes B
-        |
-        v
-   z = z0 + a B
+committed identity z0
+        +
+local measured transport rig B(z0)
+        +
+direct coefficients a
+        ->
+face
 ```
 
-"Eigenface" is useful shorthand for the intuition, but this is **not PCA eigenfaces**. It is a nonlinear learned latent manifold. The important discovery in SplatWorld2 is that the useful local modes appear to depend strongly on *where you are in that manifold*.
-
-## Tonight's observation: every face seems to have a different local rig
-
-This became visible only after the old destructive-looking blur/fire behavior was suppressed enough that nearby changes could be watched cleanly.
-
-Around some committed faces, the best locally measured directions produce something that looks like:
-
-- head yaw / turning left-right,
-- head motion up-down,
-- coarse pose or scale.
-
-Around other faces, the corresponding strongest directions instead produce:
-
-- long hair <-> short hair,
-- face shape changes,
-- expression/appearance changes,
-- mixtures of pose and appearance.
-
-So the current interpretation is **not** "there is one universal head-turn axis and it sometimes breaks." It is:
-
-> **The global face manifold contains many freedoms, but the locally strong / transport-like freedoms differ from identity to identity. Each location exposes its own small local rig.**
-
-Locally, for decoder `F`,
+The new `splatworld3.py` puts one persistent shared object in the middle:
 
 ```text
-I = F(z)
-
-dI ~= J(z0) dz
+                         address a=(x,y,z)
+                                |
+                                v
+persistent material g -> dense M_g(a) -> local rig B(z0) -> decoder -> face
 ```
 
-and there is no reason for
+The key point is that **there is no stored matrix per address**.
+
+There is one small material vector `g`. From it the program rebuilds a dense address-conditioned operator
 
 ```text
-J(z_face_A) == J(z_face_B).
+M_g(a) = [ K(g) + D(a) + i gamma I ]^-1
 ```
 
-The local Jacobian can therefore have different dominant directions at different identities. A direction that is mostly yaw near one face may be hair/shape near another.
+and samples that operator to obtain coefficients in the currently measured local face rig.
 
-This also changes how we interpret an older SplatWorld observation. In the earlier **fire / destructive transition** behavior, we often assumed the system had simply broken when a turn became unstable. That may still have happened in some cases, but the failure obscured another possibility: the trajectory had entered a region whose local degrees of freedom were simply *different*. Once SplatWorld2 removed enough of the accumulated visual destruction, that distinction became visible by eye.
+So the experiment is deliberately trying to make this idea visible:
 
-That is presently an observation, not a finished measurement. A natural next experiment would probe many committed identities, render +/- excursions along several local directions for each, and build an atlas of which identities have pose-like, expression-like, hair-like, or repaint-like local modes.
+> **one persistent substrate can expose a family of different transformations depending on how it is queried.**
 
-## What SplatWorld2 changed
+That is the limited sense in which the "holographic plate" analogy is useful here. It is not optical holography and it is not yet a 3-D world model.
 
-For a committed identity `z0`, SplatWorld2 samples many orthonormal latent directions `d` and renders:
+## What you should see
+
+The main window is still the familiar SplatWorld face.
+
+The right side now shows:
+
+- four faces produced at four fixed addresses from the **same** `g`,
+- the real part of the current dense matrix `M_g(a)`,
+- a bar-code-like view of the persistent material couplings,
+- how far the current matrix has moved from the matrix exposed at the origin.
+
+Drag the mouse. You are no longer directly moving on two chosen latent axes. You are moving an **address**. The address changes the matrix, the matrix changes the coefficients injected into the local transport basis, and the decoder makes that visible as a face change.
+
+The origin is centered so
 
 ```text
-z0 - eps*d    and    z0 + eps*d
+a = (0,0,0) -> committed identity
 ```
 
-It asks how much of each image change can be explained by **optical transport** rather than repainting. Directions are ranked by a transport score:
+and nearby addresses expose nearby operator slices.
+
+The third coordinate is controlled with the mouse wheel or `[` / `]`.
+
+## The visually important button: `M`
+
+Press **M** once.
+
+It performs one tiny conservative material edit:
 
 ```text
-latent direction
-      |
-      v
-render minus / plus
-      |
-      v
-dense optical flow
-      |
-      +--> how much raw image error disappears after warping?
+one edge loses delta g
+another edge gains delta g
+sum(g) stays constant
 ```
 
-The best local directions become the transport control plane around that face.
+Only the shared substrate changed.
 
-The second change is the anti-blur rule:
+Then look at the main face **and the four corner-address previews**.
 
-> **Every locked frame is reconstructed from the same immutable anchor. Never from the previous displayed frame.**
-
-The ONNX render supplies the changing guide. High-frequency detail comes from one frozen anchor and is warped into the guide. Therefore the display does not contain the old recurrence
+If they all move, that is the point of this version:
 
 ```text
-frame N -> lossy representation -> frame N+1 -> lossy representation -> ...
+change one piece of g
+        ->
+change the family { M_g(a) }
+        ->
+several addressed manifestations move together
 ```
 
-that lets small reconstruction losses compound into progressive blur/fire.
+Press **U** to undo the edit and **G** to restore the original plate.
 
-This does **not** turn a 96px decoder into a high-resolution identity model. It only prevents the display loop itself from repeatedly destroying detail that was already present.
+This is not learning yet. It is the simplest visual demonstration that one stored object is upstream of several effective transformations.
 
-## Two exploration scales
+## Why this came after ObjektiYksi
 
-### IDENTITY mode — move through the global face manifold
+`ObjektiYksi` established the useful computational distinction:
 
-Press **I** to enter identity mode, then drag. This rotates/moves the latent face point through the learned population manifold, like the original SplatWorld SURF behavior.
+```text
+ordinary layer:
+    store W
+    y = W x
 
-Identity mode is deliberately not locked to the old face: preserving the previous anchor while trying to become another identity would make the lock fight the transition.
+operator substrate:
+    store g
+    query address a
+    expose M_g(a)
+    y = M_g(a) x
+```
 
-When you find a face you want to inspect, press **ENTER**. That face becomes the new `z0`; SplatWorld2 renders a fresh immutable anchor and re-measures the local transport basis around it.
+Its later experiments also showed that two addressed dense operators can share one conserved substrate, and that apparent interference between them need not imply incompatibility.
 
-### TRANSPORT mode — inspect the local rig
+`SplatWorld3` does **not** copy those numerical claims onto faces. It borrows the object and asks a new question:
 
-After committing a face, drag in transport mode. You are moving only through the locally measured transport-like directions around that identity.
+> what does an address-conditioned operator family look like when every change can be watched directly in an already-trained visual manifold?
 
-This is where the face-dependent behavior became obvious: one committed identity may turn its head while another changes hair length or moves vertically.
+## Relationship to SplatWorld2
+
+SplatWorld2 found that different committed faces expose different local transport-like directions. One face may have a local mode that looks like yaw; another may expose hair, expression, scale, or a mixture.
+
+SplatWorld3 keeps that local measurement:
+
+```text
+B = measured local transport-like basis around z0
+```
+
+but instead of letting the mouse choose coefficients directly, it uses
+
+```text
+c(a) = sample( M_g(a) )
+z(a) = z0 + gain * c(a) B
+```
+
+This gives two nested sources of state dependence:
+
+```text
+shared plate g determines the address-conditioned operator
+current identity z0 determines what those coefficients mean visually
+```
+
+That is why pressing **N** is interesting. A new identity gets a newly measured local rig, but **the operator plate survives**. The same plate is now being interpreted through a different local visual Jacobian.
 
 ## Run
 
-No training is required. `splat_decoder.onnx` lives directly in this repo.
+The existing ONNX decoder is already in the repository.
 
 ```bash
 pip install -r requirements.txt
-python splatworld2.py --selftest
-python splatworld2.py
+python splatworld3.py --selftest
+python splatworld3.py
 ```
 
-To inspect the local transport ranking numerically:
+Automatic address motion:
 
 ```bash
-python splatworld2.py --probe
+python splatworld3.py --auto
+```
+
+The old direct explorer remains available:
+
+```bash
+python splatworld2.py
 ```
 
 ## Controls
 
-- **I** — toggle IDENTITY / TRANSPORT mode
-- **drag in IDENTITY** — surf through learned faces
-- **ENTER** — commit the current identity, rebuild anchor, re-probe local modes
-- **N** — jump to a fresh random identity and commit it
-- **P** — return to the previous committed identity
-- **drag in TRANSPORT** — move in the current face's measured local directions
-- **right drag** — finer local movement
-- **L** — raw ONNX / identity-lock A/B
-- **A** — automatic local transport motion
-- **R** — reset local motion to the current committed identity
-- **S** — save frame
-- **Q** — quit
+- **drag** — move address `x,y`
+- **right drag** — finer address motion
+- **mouse wheel** or **[ / ]** — move the third address coordinate
+- **O** — operator / direct-coordinate A/B
+- **M** — one conservative mutation of shared material `g`
+- **U** — undo the latest material mutation
+- **G** — reset material to the startup plate
+- **ENTER** — commit the currently produced face as the new identity; re-probe its local rig while keeping the plate
+- **N** — new random identity; plate persists
+- **P** — previous committed identity; plate persists
+- **L** — identity-lock / raw decoder A/B
+- **A** — automatic address motion
+- **R** — return address to the origin
+- **K** — save the current plate as `operator_plate.npz`
+- **S** — save the current UI frame
+- **Q / Esc** — quit
 
-Try automatic local motion:
-
-```bash
-python splatworld2.py --auto
-```
-
-## Optional sharper anchor texture
-
-You can provide a sharper image as the immutable detail reservoir:
+A saved plate can be reloaded:
 
 ```bash
-python splatworld2.py --anchor_image face.jpg
+python splatworld3.py --plate operator_plate.npz
 ```
 
-This does not encode that photograph into the model or turn SplatWorld2 into a general reenactment system. It only supplies texture/detail for the current anchor compositor.
+## What the operator actually is
 
-## Knobs worth touching
+`operator_plate.py` is intentionally small and independent of the face model.
 
-```text
---probe_dirs 32        latent directions measured around each committed face
---probe_eps 0.35       +/- local step used for transport measurement
---span 3.0             max live coefficient on each selected local direction
---detail_sigma 1.2     which anchor frequencies count as retained detail
---detail_gain 1.0      amount of warped detail added back
---confidence_sigma .10 how quickly bad-flow regions lose anchor detail
---size 640             display/compositor resolution
+`g` contains positive edge couplings on a small reciprocal graph. Those couplings form a Laplacian-like stiffness matrix `K(g)`. The address changes diagonal loading and slightly shifts the carrier coordinate. The program then solves the resulting dense inverse response.
+
+The visual face control uses a fixed complex illumination vector to sample the matrix. The response is centered at the origin and bounded before it is projected into the local SplatWorld basis.
+
+That means the current implementation is a **toy operator substrate**, not a learned physical model of faces.
+
+Its standalone self-test checks that:
+
+1. changing address changes the exposed matrix,
+2. the same address deterministically gives the same matrix,
+3. one local material transfer conserves total material,
+4. that one transfer changes an exposed response,
+5. derivative-free conservative dithering can fit several matrix slices produced by a reachable hidden teacher plate.
+
+Run it directly with:
+
+```bash
+python operator_plate.py
 ```
 
-The ONNX has a dynamic batch axis, so startup probes are batched. `onnxruntime` is required; CUDA is used automatically if the installed runtime exposes `CUDAExecutionProvider`.
+## What would count as interesting now
 
-## The useful gate
+Do not ask whether the UI looks futuristic. Ask what the family does.
 
-Do not judge only whether a face looks pretty. Pick several identities and ask:
+The first things worth watching are:
 
-1. Does the identity manifold really move between distinct faces smoothly?
-2. After committing each face, what do its strongest local directions actually do?
-3. Are some identities strongly pose-riggable while others are dominated by hair/expression/appearance change?
-4. Does `L` show that the immutable-anchor path prevents progressive softening without inventing motion that the decoder did not produce?
-5. If an apparent mode changes between identities, is that repeatable after revisiting the same committed face?
+- Do nearby addresses produce coherent motion or unrelated repainting?
+- Do loops in address space approximately return to the same visual state?
+- When `g` is mutated once, do several addresses deform in related ways rather than independently?
+- Does the same saved plate retain recognizable structure when it is carried to a different committed identity/local rig?
+- Does operator mode produce behavior qualitatively different from the direct-coordinate control under **O**?
 
-A strong result would be a repeatable **local-mode atlas**: the same global decoder, but measurably different local controllable freedoms in different regions of its learned face manifold.
+If none of that is interesting, the operator layer is unnecessary and SplatWorld2 is the better program.
 
-## Why this exists
+If coherent structure does appear, then the next step is **not another numbered gate**. It is to let the plate learn from several visually defined address/view relations and see whether the spaces between the trained addresses become a coherent manifold.
 
-The original SplatWorld made it easy to fly through a learned population of faces, but destructive transitions could make it hard to tell whether a trajectory had exposed meaningful local structure or merely collapsed visually.
+## Honest boundary
 
-SplatWorld2 separates two questions:
+The three coordinates called `x,y,z` here are **abstract query coordinates**. They are not certified camera position, head pose, physical space, or disentangled semantic axes.
 
-```text
-Where am I in the global face manifold?
+The four preview faces are not four true views of one 3-D person. They are four outputs generated by interrogating the same operator substrate at four addresses and then passing those responses through the local face rig.
 
-and
+So the current claim is deliberately small:
 
-What directions are locally available around this face?
-```
+> **SplatWorld3 makes one-shared-substrate / many-address-conditioned-operators visible inside an existing learned image manifold.**
 
-Then it removes one major confound by refusing to recursively reconstruct the previous displayed frame.
+The interesting question is what kind of visual geometry, if any, emerges from that arrangement.
 
-No new physics and no claim that optical flow is a new AI architecture. The interesting result is more modest: once the destructive display failure was reduced, the old face manifold became easier to interrogate, and its local freedoms no longer looked uniform.
+---
 
-## Provenance
-
-Descendant of `anttiluode/SplatWorld`; reuses its existing `splat_decoder.onnx`. The model was trained on CelebA, so check CelebA's own terms before commercial use of model outputs.
+`Splatworld2.py` and `splatworld2.png` remain as the untouched control lineage. The decoder was trained from CelebA; check the dataset's own terms before commercial use of model outputs.
