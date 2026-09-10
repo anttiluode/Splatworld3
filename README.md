@@ -2,149 +2,47 @@
 
 ![SplatWorld2 control](splatworld2.png)
 
-`Splatworld3` is the branch where the **ObjektiYksi operator-family idea is inserted into the visual SplatWorld face manifold**.
+`SplatWorld3` inserts the **ObjektiYksi operator-family idea** into the existing SplatWorld face manifold.
 
-The old `splatworld2.py` is intentionally still here as the control. It does:
-
-```text
-committed identity z0
-        +
-local measured transport rig B(z0)
-        +
-direct coefficients a
-        ->
-face
-```
-
-The new `splatworld3.py` puts one persistent shared object in the middle:
+The persistent object is not a matrix per view. It is one small material vector `g`:
 
 ```text
-                         address a=(x,y,z)
+                         query a=(x,y,z)
                                 |
                                 v
 persistent material g -> dense M_g(a) -> local rig B(z0) -> decoder -> face
 ```
 
-The key point is that **there is no stored matrix per address**.
-
-There is one small material vector `g`. From it the program rebuilds a dense address-conditioned operator
+with
 
 ```text
-M_g(a) = [ K(g) + D(a) + i gamma I ]^-1
+M_g(a) = [K(g) + D(a) + i gamma I]^-1
 ```
 
-and samples that operator to obtain coefficients in the currently measured local face rig.
+Different queries expose different dense matrices from the same `g`. The matrix response is then projected into the local transport-like basis measured around the currently committed face.
 
-So the experiment is deliberately trying to make this idea visible:
+This is a **visual operator-family experiment**, not a claim that the CelebA model contains a true 3-D head or world.
 
-> **one persistent substrate can expose a family of different transformations depending on how it is queried.**
+## Important v1.1 correction: the first UI hid the effect
 
-That is the limited sense in which the "holographic plate" analogy is useful here. It is not optical holography and it is not yet a 3-D world model.
+The first operator build was mathematically changing `M_g(a)`, but its coupling into the SplatWorld local rig was much too weak to see. On the startup plate, the four operator-response norms were only about `0.10–0.16`, while a random conservative `M` mutation changed them by only about `1e-3` in norm. At the same time the raw-matrix heatmap rescaled itself every frame, making tiny matrix changes look visually dramatic.
 
-## What you should see
+That was a bad instrument, not an interesting null result.
 
-The main window is still the familiar SplatWorld face.
+The current version therefore:
 
-The right side now shows:
+- calibrates operator coefficients to the **same local-motion budget** as the direct-coordinate control;
+- makes the four preview faces sample a **neighborhood around the current address**, so dragging moves the whole visible family;
+- shows `|c|` for the current query and each preview;
+- displays `Re[M_g(a)-M_g(0)]` instead of a misleading independently normalized raw matrix;
+- makes **M** choose one conservative edge-to-edge transfer with high operator-family impact in the currently displayed neighborhood;
+- prints the actual per-view coefficient displacement `|dc|` caused by that material edit.
 
-- four faces produced at four fixed addresses from the **same** `g`,
-- the real part of the current dense matrix `M_g(a)`,
-- a bar-code-like view of the persistent material couplings,
-- how far the current matrix has moved from the matrix exposed at the origin.
+The scale is fixed for a plate state while you mutate it, so a material edit cannot hide itself by causing an automatic rescaling.
 
-Drag the mouse. You are no longer directly moving on two chosen latent axes. You are moving an **address**. The address changes the matrix, the matrix changes the coefficients injected into the local transport basis, and the decoder makes that visible as a face change.
+## What to look at
 
-The origin is centered so
-
-```text
-a = (0,0,0) -> committed identity
-```
-
-and nearby addresses expose nearby operator slices.
-
-The third coordinate is controlled with the mouse wheel or `[` / `]`.
-
-## The visually important button: `M`
-
-Press **M** once.
-
-It performs one tiny conservative material edit:
-
-```text
-one edge loses delta g
-another edge gains delta g
-sum(g) stays constant
-```
-
-Only the shared substrate changed.
-
-Then look at the main face **and the four corner-address previews**.
-
-If they all move, that is the point of this version:
-
-```text
-change one piece of g
-        ->
-change the family { M_g(a) }
-        ->
-several addressed manifestations move together
-```
-
-Press **U** to undo the edit and **G** to restore the original plate.
-
-This is not learning yet. It is the simplest visual demonstration that one stored object is upstream of several effective transformations.
-
-## Why this came after ObjektiYksi
-
-`ObjektiYksi` established the useful computational distinction:
-
-```text
-ordinary layer:
-    store W
-    y = W x
-
-operator substrate:
-    store g
-    query address a
-    expose M_g(a)
-    y = M_g(a) x
-```
-
-Its later experiments also showed that two addressed dense operators can share one conserved substrate, and that apparent interference between them need not imply incompatibility.
-
-`SplatWorld3` does **not** copy those numerical claims onto faces. It borrows the object and asks a new question:
-
-> what does an address-conditioned operator family look like when every change can be watched directly in an already-trained visual manifold?
-
-## Relationship to SplatWorld2
-
-SplatWorld2 found that different committed faces expose different local transport-like directions. One face may have a local mode that looks like yaw; another may expose hair, expression, scale, or a mixture.
-
-SplatWorld3 keeps that local measurement:
-
-```text
-B = measured local transport-like basis around z0
-```
-
-but instead of letting the mouse choose coefficients directly, it uses
-
-```text
-c(a) = sample( M_g(a) )
-z(a) = z0 + gain * c(a) B
-```
-
-This gives two nested sources of state dependence:
-
-```text
-shared plate g determines the address-conditioned operator
-current identity z0 determines what those coefficients mean visually
-```
-
-That is why pressing **N** is interesting. A new identity gets a newly measured local rig, but **the operator plate survives**. The same plate is now being interpreted through a different local visual Jacobian.
-
-## Run
-
-The existing ONNX decoder is already in the repository.
+Run:
 
 ```bash
 pip install -r requirements.txt
@@ -152,35 +50,46 @@ python splatworld3.py --selftest
 python splatworld3.py
 ```
 
-Automatic address motion:
-
-```bash
-python splatworld3.py --auto
-```
-
-The old direct explorer remains available:
+The old control remains:
 
 ```bash
 python splatworld2.py
 ```
 
+In **OPERATOR** mode, drag around. The big face is the current query. The four smaller faces are nearby queries of the **same plate**, not fixed thumbnails. They should now visibly move as the query neighborhood moves.
+
+Press **O** to switch to **DIRECT** mode. In DIRECT mode the large face deliberately bypasses `g`; changing `g` should not affect that large face. The previews still show the operator family.
+
+Press **M** in OPERATOR mode. `M` performs exactly one material-conserving transfer:
+
+```text
+g_src -= delta
+g_dst += delta
+sum(g) unchanged
+```
+
+but chooses the source/destination edge pair that most changes the operator responses at the four currently displayed nearby queries. It does **not** inspect pixels and it is **not learning**. It is simply a visibility probe: one local change to `g`, chosen so we can actually see what changing the shared substrate does to the family.
+
+The console and HUD report the mean and per-view `|dc|` caused by that one edit.
+
+Press **U** to undo it exactly. Press **G** to restore the startup plate.
+
 ## Controls
 
-- **drag** — move address `x,y`
-- **right drag** — finer address motion
-- **mouse wheel** or **[ / ]** — move the third address coordinate
+- **drag** — move abstract query `x,y`
+- **right drag** — finer query movement
+- **mouse wheel** or **[ / ]** — move the third query coordinate
 - **O** — operator / direct-coordinate A/B
-- **M** — one conservative mutation of shared material `g`
-- **U** — undo the latest material mutation
-- **G** — reset material to the startup plate
-- **ENTER** — commit the currently produced face as the new identity; re-probe its local rig while keeping the plate
-- **N** — new random identity; plate persists
-- **P** — previous committed identity; plate persists
+- **M** — one visible high-impact conservative material transfer
+- **U** — undo latest material transfer
+- **G** — restore startup material
+- **ENTER** — commit current output as new identity and re-measure its local rig
+- **N / P** — new / previous committed identity; plate persists
 - **L** — identity-lock / raw decoder A/B
-- **A** — automatic address motion
-- **R** — return address to the origin
-- **K** — save the current plate as `operator_plate.npz`
-- **S** — save the current UI frame
+- **A** — automatic query motion
+- **R** — return query to origin
+- **K** — save plate to `operator_plate.npz`
+- **S** — screenshot
 - **Q / Esc** — quit
 
 A saved plate can be reloaded:
@@ -189,58 +98,52 @@ A saved plate can be reloaded:
 python splatworld3.py --plate operator_plate.npz
 ```
 
-## What the operator actually is
+## What is actually being tested
 
-`operator_plate.py` is intentionally small and independent of the face model.
+SplatWorld2 already showed that the strongest local transport-like directions depend on the committed identity. One face may expose yaw-like motion while another exposes hair, expression, scale, or mixtures.
 
-`g` contains positive edge couplings on a small reciprocal graph. Those couplings form a Laplacian-like stiffness matrix `K(g)`. The address changes diagonal loading and slightly shifts the carrier coordinate. The program then solves the resulting dense inverse response.
+SplatWorld3 keeps that measured local rig:
 
-The visual face control uses a fixed complex illumination vector to sample the matrix. The response is centered at the origin and bounded before it is projected into the local SplatWorld basis.
-
-That means the current implementation is a **toy operator substrate**, not a learned physical model of faces.
-
-Its standalone self-test checks that:
-
-1. changing address changes the exposed matrix,
-2. the same address deterministically gives the same matrix,
-3. one local material transfer conserves total material,
-4. that one transfer changes an exposed response,
-5. derivative-free conservative dithering can fit several matrix slices produced by a reachable hidden teacher plate.
-
-Run it directly with:
-
-```bash
-python operator_plate.py
+```text
+B(z0) = locally measured transport-like basis
 ```
 
-## What would count as interesting now
+but replaces direct mouse coefficients with an address-conditioned operator response:
 
-Do not ask whether the UI looks futuristic. Ask what the family does.
+```text
+c(a) = scale * response(M_g(a))
+z(a) = z0 + c(a) B(z0)
+```
 
-The first things worth watching are:
+This gives two nested state dependencies:
 
-- Do nearby addresses produce coherent motion or unrelated repainting?
-- Do loops in address space approximately return to the same visual state?
-- When `g` is mutated once, do several addresses deform in related ways rather than independently?
-- Does the same saved plate retain recognizable structure when it is carried to a different committed identity/local rig?
-- Does operator mode produce behavior qualitatively different from the direct-coordinate control under **O**?
+```text
+g determines which operator slice the query exposes
+z0 determines what that operator response means visually
+```
 
-If none of that is interesting, the operator layer is unnecessary and SplatWorld2 is the better program.
+The question is therefore not “does this make a pretty face?” It is:
 
-If coherent structure does appear, then the next step is **not another numbered gate**. It is to let the plate learn from several visually defined address/view relations and see whether the spaces between the trained addresses become a coherent manifold.
+> **Does one shared substrate generate a coherent family of visual transformations when it is queried continuously?**
+
+Useful observations would include coherent local motion, repeatable loops in query space, several nearby views deforming together after one `g` edit, or stable structure surviving when the same plate is carried to a new committed identity.
+
+If operator mode remains arbitrary or visually no better than direct control, the operator layer has not bought us anything.
 
 ## Honest boundary
 
-The three coordinates called `x,y,z` here are **abstract query coordinates**. They are not certified camera position, head pose, physical space, or disentangled semantic axes.
+The coordinates `x,y,z` are abstract query coordinates. They are **not certified camera position, depth, head pose, or disentangled semantic axes**.
 
-The four preview faces are not four true views of one 3-D person. They are four outputs generated by interrogating the same operator substrate at four addresses and then passing those responses through the local face rig.
+The four previews are not four true photographs of one 3-D person. They are outputs of the same learned face decoder after four nearby queries have been passed through one shared operator substrate and the current local face rig.
 
-So the current claim is deliberately small:
+`M` is not a learning rule. It intentionally chooses a high-impact conservative material perturbation so the shared-substrate consequence can be seen rather than buried below the decoder's visual resolution.
 
-> **SplatWorld3 makes one-shared-substrate / many-address-conditioned-operators visible inside an existing learned image manifold.**
+The current limited claim is:
 
-The interesting question is what kind of visual geometry, if any, emerges from that arrangement.
+> **One persistent `g` generates many address-conditioned dense operators, and SplatWorld3 makes their shared deformation directly inspectable inside an existing visual manifold.**
+
+The next interesting step, only if the live behavior earns it, is to train `g` on several visual relations and see whether the spaces between trained queries become coherent rather than memorized islands.
 
 ---
 
-`Splatworld2.py` and `splatworld2.png` remain as the untouched control lineage. The decoder was trained from CelebA; check the dataset's own terms before commercial use of model outputs.
+`operator_plate.py` is standalone NumPy and contains its own physical/operator sanity checks. `splatworld2.py` remains the untouched direct-control lineage. The decoder was trained from CelebA; check the dataset's terms before commercial use of model outputs.
