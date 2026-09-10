@@ -74,6 +74,73 @@ The console and HUD report the mean and per-view `|dc|` caused by that one edit.
 
 Press **U** to undo it exactly. Press **G** to restore the startup plate.
 
+## Whole-world operator atlas
+
+The live UI only shows one query and four neighbors. `operator_atlas.py` renders the entire 2-D address plane at once so the shared object can be inspected as a map instead of a moving cursor.
+
+To reproduce the deliberately extreme regime that finally exposed visibly different heads:
+
+```bash
+python operator_atlas.py --address_span 5 --motion_gain 9 --grid 10 --show
+```
+
+This writes:
+
+```text
+operator_atlas/
+  atlas_faces.png
+  atlas_metrics.png
+  atlas_data.npz
+```
+
+`atlas_faces.png` is a literal 10x10 map: columns are `x`, rows are `y`, and every tile is produced by the **same `g`** queried at a different address. The small white number on each tile is the relative matrix distance `||M(a)-M(0)|| / ||M(0)||`.
+
+`atlas_metrics.png` puts three maps beside each other:
+
+```text
+relative matrix distance from origin
+condition number of the physical solve
+operator coefficient norm |c|
+```
+
+That lets us distinguish three visually different phenomena:
+
+- smooth visual change while matrix distance grows;
+- resonant islands where `cond(A)` rises sharply;
+- decoder/local-chart failure where `|c|` becomes huge and the old SplatWorld "fire" appears.
+
+To scratch the plate once and redraw the entire world:
+
+```bash
+python operator_atlas.py --address_span 5 --motion_gain 9 --grid 10 --mutate --show
+```
+
+This additionally writes:
+
+```text
+atlas_before_faces.png
+atlas_after_faces.png
+atlas_difference.png
+atlas_mutation_metrics.png
+atlas_mutation_summary.json
+```
+
+The mutation still does not inspect pixels. It selects one conservative edge-to-edge material transfer that strongly moves the operator responses across the atlas, keeps `sum(g)` fixed, and then re-renders all 100 queries.
+
+That gives the visual experiment we actually wanted:
+
+```text
+one local change to g
+        ->
+the whole address-conditioned operator family changes
+        ->
+the entire atlas of possible appearances deforms
+```
+
+If the before/after atlas changes everywhere in a structured way, that is the useful sense in which the plate behaves like one distributed object upstream of many manifestations. If the atlas is just unrelated islands or mostly local-chart blow-up, that is equally informative and keeps the "world" interpretation honest.
+
+The exact arrays are saved in `atlas_data.npz` so screenshots are not the only evidence.
+
 ## Controls
 
 - **drag** — move abstract query `x,y`
