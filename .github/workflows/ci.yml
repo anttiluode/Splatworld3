@@ -22,3 +22,5 @@ jobs:
         run: python operator_plate.py
       - name: SplatWorld3 bridge selftest
         run: python splatworld3.py --selftest
+      - name: Operator atlas selftest
+        run: python operator_atlas.py --selftest
