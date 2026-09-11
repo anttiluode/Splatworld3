@@ -1,0 +1,65 @@
+{
+  "design": {
+    "operator_dim": 6,
+    "edges": 12,
+    "independent_material_dof_after_conservation": 11,
+    "anchor_radius": 2.0,
+    "anchors": [[2.0,0.0,0.0],[0.0,2.0,0.0],[-2.0,0.0,0.0],[0.0,-2.0,0.0]],
+    "measurement_dim_per_anchor": 2,
+    "sparse_scalar_observations": 8,
+    "full_scalar_observations": 24,
+    "teacher_mutations": 80,
+    "teacher_delta": 0.04
+  },
+  "fit": {
+    "sparse": {"before": 0.0007446733519749771, "after": 2.501930137389143e-07, "accepted": 72},
+    "full": {"before": 0.0006332081235756805, "after": 3.1799790618349374e-07, "accepted": 72},
+    "shuffled": {"before": 0.014757917062893623, "after": 0.008026741440398293, "accepted": 72}
+  },
+  "errors": {
+    "base": {
+      "anchors": 0.25854505988671733,
+      "heldout_same_radius_ring": 0.24886840133614244,
+      "heldout_grid": 0.24429912338309845,
+      "ring_cosine": {"median": 0.9760700482285924, "mean": 0.9573237594374652, "p10": 0.881665014754829}
+    },
+    "sparse": {
+      "anchors": 0.07738226093267032,
+      "heldout_same_radius_ring": 0.07716219833895212,
+      "heldout_grid": 0.07617189038074461,
+      "ring_cosine": {"median": 0.9974791751737815, "mean": 0.9969403141282221, "p10": 0.994136977314798}
+    },
+    "full": {
+      "anchors": 0.00579395523213952,
+      "heldout_same_radius_ring": 0.005680651069794589,
+      "heldout_grid": 0.006655848372346223,
+      "ring_cosine": {"median": 0.9999875040095729, "mean": 0.9999831247292551, "p10": 0.9999652665161595}
+    },
+    "shuffled": {
+      "anchors": 0.48038117317915074,
+      "heldout_same_radius_ring": 0.4485673792845997,
+      "heldout_grid": 0.4785860363843057,
+      "ring_cosine": {"median": 0.9113409939861226, "mean": 0.900237909678127, "p10": 0.7725947401504553}
+    },
+    "radial_only_same_radius_ring": 0.9657248185766887
+  },
+  "material": {
+    "sum_base": 3.7745606621765675,
+    "sum_teacher": 3.774560662176568,
+    "sum_sparse": 3.774560662176568,
+    "sum_full": 3.7745606621765675,
+    "sum_shuffled": 3.774560662176567,
+    "teacher_distance_from_base": 0.5513619500836088,
+    "sparse_distance_from_teacher": 0.4182963961116568,
+    "full_distance_from_teacher": 0.07607562027351474
+  },
+  "checks": {
+    "full_positive_control": true,
+    "sparse_beats_base_by_2x": true,
+    "sparse_beats_shuffled_by_2x": true,
+    "sparse_beats_radial_only_by_3x": true,
+    "all_material_conserved": true,
+    "sparse_is_underdetermined": true
+  },
+  "verdict": "SPARSE_SAME_RADIUS_INTERPOLATION_SURVIVES_FOVEA_CONTROL"
+}
