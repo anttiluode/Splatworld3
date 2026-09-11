@@ -17,6 +17,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: pip install numpy pillow
       - run: python splatworld3d.py --selftest
+      - run: python splatworld3d_diagnostic.py --selftest
 
   external-world:
     runs-on: ubuntu-latest
@@ -27,7 +28,10 @@ jobs:
           python-version: '3.11'
       - run: pip install numpy pillow
       - run: python splatworld3d.py --run --size 48 --n_train 8 --basis_dim 6 --steps 2500 --out_dir splatworld3d_out
+      - run: python splatworld3d_diagnostic.py --run --size 48 --n_train 8 --basis_dim 6 --steps 2500 --out_dir splatworld3d_diag
       - uses: actions/upload-artifact@v4
         with:
           name: splatworld3d-first-result
-          path: splatworld3d_out/
+          path: |
+            splatworld3d_out/
+            splatworld3d_diag/
