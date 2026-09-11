@@ -24,3 +24,25 @@ jobs:
         run: python splatworld3.py --selftest
       - name: Operator atlas selftest
         run: python operator_atlas.py --selftest
+      - name: Sparse-world selftest
+        run: python sparse_world.py --selftest
+      - name: Sparse-world numeric experiment
+        run: python sparse_world.py --no_render --outdir sparse_world_numeric
+
+  sparse-world-result:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Run sparse-world experiment with real decoder
+        run: python sparse_world.py --cpu --outdir sparse_world_results
+      - name: Upload sparse-world result
+        uses: actions/upload-artifact@v4
+        with:
+          name: sparse-world-result
+          path: sparse_world_results/
