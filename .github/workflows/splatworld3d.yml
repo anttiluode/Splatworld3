@@ -1,0 +1,43 @@
+name: splatworld3d
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install numpy pillow
+      - run: python splatworld3d.py --selftest
+      - run: python splatworld3d_diagnostic.py --selftest
+      - run: python splatworld3d_loo.py --selftest
+      - run: python splatworld3d_feature_controls.py --selftest
+
+  external-world:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy pillow
+      - run: python splatworld3d.py --run --size 48 --n_train 8 --basis_dim 6 --steps 2500 --out_dir splatworld3d_out
+      - run: python splatworld3d_diagnostic.py --run --size 48 --n_train 8 --basis_dim 6 --steps 2500 --out_dir splatworld3d_diag
+      - run: python splatworld3d_loo.py --run --size 48 --n_train 8 --basis_dim 6 --feat_dim 5 --steps 3000 --out_dir splatworld3d_loo
+      - run: python splatworld3d_feature_controls.py --run --size 48 --n_train 8 --basis_dim 6 --seeds 32 --out_dir splatworld3d_feature_controls
+      - uses: actions/upload-artifact@v4
+        with:
+          name: splatworld3d-first-result
+          path: |
+            splatworld3d_out/
+            splatworld3d_diag/
+            splatworld3d_loo/
+            splatworld3d_feature_controls/
