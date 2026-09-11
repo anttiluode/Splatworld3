@@ -18,6 +18,7 @@ jobs:
       - run: pip install numpy pillow
       - run: python splatworld3d.py --selftest
       - run: python splatworld3d_diagnostic.py --selftest
+      - run: python splatworld3d_loo.py --selftest
 
   external-world:
     runs-on: ubuntu-latest
@@ -29,9 +30,11 @@ jobs:
       - run: pip install numpy pillow
       - run: python splatworld3d.py --run --size 48 --n_train 8 --basis_dim 6 --steps 2500 --out_dir splatworld3d_out
       - run: python splatworld3d_diagnostic.py --run --size 48 --n_train 8 --basis_dim 6 --steps 2500 --out_dir splatworld3d_diag
+      - run: python splatworld3d_loo.py --run --size 48 --n_train 8 --basis_dim 6 --feat_dim 5 --steps 3000 --out_dir splatworld3d_loo
       - uses: actions/upload-artifact@v4
         with:
           name: splatworld3d-first-result
           path: |
             splatworld3d_out/
             splatworld3d_diag/
+            splatworld3d_loo/
